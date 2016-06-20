@@ -1,11 +1,24 @@
 import hashlib
 import inspect
 import math
-from django.utils import six
+from pkg_resources import parse_version
 
+import django
+from django.core.exceptions import ImproperlyConfigured
+from django.utils import six
 from django.utils.functional import LazyObject
 from django.utils import timezone
 
+try:
+    from django.utils.module_loading import import_string
+except ImportError:
+    from django.utils.module_loading import import_by_path as import_string
+
+try:
+    AmbiguousTimeError = import_string('pytz.exceptions.AmbiguousTimeError')
+    NonExistentTimeError = import_string('pytz.exceptions.NonExistentTimeError')
+except (ImportError, ImproperlyConfigured):
+    AmbiguousTimeError, NonExistentTimeError = None, None
 
 try:
     from PIL import Image
@@ -151,5 +164,14 @@ def get_modified_time(storage, name):
     if modified_time and timezone.is_naive(modified_time):
         if getattr(settings, 'USE_TZ', False):
             default_timezone = timezone.get_default_timezone()
-            return timezone.make_aware(modified_time, default_timezone)
+            try:
+                return timezone.make_aware(modified_time, timezone=default_timezone)
+            except Exception as exc:
+                if AmbiguousTimeError and type(exc) in (AmbiguousTimeError, NonExistentTimeError):
+                    if parse_version(django.get_version()) >= parse_version('1.9'):
+                        return timezone.make_aware(modified_time, timezone=default_timezone, is_dst=False)
+                    else:
+                        return default_timezone.localize(modified_time, is_dst=False)
+                else:
+                    raise exc
     return modified_time
