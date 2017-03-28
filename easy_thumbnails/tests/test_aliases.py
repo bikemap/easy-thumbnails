@@ -1,13 +1,19 @@
 from django.core.files import storage as django_storage
-from django.core.management import call_command
-from django.db.models import FileField, loading
-from django.db.models.query_utils import deferred_class_factory
+from django.db.models import FileField
 from django.db.models.signals import post_save, pre_save
 
 from easy_thumbnails import files, signal_handlers, signals, storage
 from easy_thumbnails.alias import aliases
 from easy_thumbnails.conf import settings
 from easy_thumbnails.tests import models, utils
+try:
+    from django.db.models import loading
+except ImportError:  # Removed in Django 1.9
+    loading = None
+try:
+    from django.utils import unittest
+except ImportError:  # Django 1.7+ no longer needs custom unittest module.
+    import unittest
 
 
 class BaseTest(utils.BaseTest):
@@ -155,7 +161,9 @@ class AliasTest(BaseTest):
                     'small': {'crop': True, 'size': (20, 20)},
                 })
 
+    @unittest.skipUnless(loading, 'Only needed in Django <1.9')
     def test_deferred(self):
+        from django.db.models.query_utils import deferred_class_factory
         loading.cache.loaded = False
         deferred_profile = deferred_class_factory(models.Profile, ('logo',))
         instance = deferred_profile(avatar='avatars/test.jpg')
