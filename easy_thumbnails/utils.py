@@ -4,7 +4,7 @@ import math
 from pkg_resources import parse_version
 
 import django
-from django.utils import six
+import six
 from django.utils.functional import LazyObject
 from django.utils import timezone
 

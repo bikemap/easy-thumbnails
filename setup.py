@@ -50,6 +50,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
+	'six',
         'django>=1.8',
         'pillow<4' if sys.version_info < (2, 7) else 'pillow',
     ],
